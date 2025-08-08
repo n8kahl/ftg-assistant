@@ -1,10 +1,19 @@
-# Merged snapshot with flow data
-from .data_uw import fetch_flow
-from .flow_engine import score_flow
+from fastapi import APIRouter, HTTPException
+import asyncio
 
-async def features_snapshot(symbol: str, trade_type: str = "day"):
-    tech_data = {"symbol": symbol, "emas": {}, "vwap": {}, "momentum": {}, "levels": {}}
-    flow_data = await fetch_flow(symbol, scope="intraday" if trade_type=="day" else "swing")
-    scored_flow = score_flow(flow_data, trade_type=trade_type)
-    tech_data.update(scored_flow)
-    return tech_data
+router = APIRouter()
+
+@router.get("/features_snapshot")
+async def features_snapshot(symbol: str):
+    try:
+        # Placeholder async gathering logic
+        df1, df5, df15, df1h, dfd = await asyncio.gather(
+            asyncio.sleep(0.1, result="df1"),
+            asyncio.sleep(0.1, result="df5"),
+            asyncio.sleep(0.1, result="df15"),
+            asyncio.sleep(0.1, result="df1h"),
+            asyncio.sleep(0.1, result="dfd")
+        )
+        return {"symbol": symbol, "df1": df1, "df5": df5}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
