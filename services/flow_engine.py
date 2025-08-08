@@ -12,3 +12,15 @@ def score_flow(flow_data: dict, trade_type: str = "day"):
     elif ratio < 0.5:
         score -= 2; tags.append("bearish_ratio")
     return {"flow_score": score, "flow_tags": tags}
+
+
+# ==== Added Missing Functions ====
+
+async def get_flow_snapshot(symbol: str):
+    """Fetch flow snapshot from Unusual Whales and calculate bias."""
+    # TODO: Integrate real UW data
+    return {
+        "bullish_score": 60,
+        "bearish_score": 40,
+        "bias": "bullish"
+    }

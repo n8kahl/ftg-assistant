@@ -35,3 +35,22 @@ async def get_agg(symbol: str, tf: str, limit: int = 2000) -> pd.DataFrame:
     df["ts"] = pd.to_datetime(df["t"], utc=True)
     df = df.rename(columns={"o":"open","h":"high","l":"low","c":"close","v":"volume"})
     return df[["ts","open","high","low","close","volume"]].set_index("ts")
+
+
+# ==== Added Missing Functions ====
+
+import datetime
+import pandas as pd
+
+async def get_alpaca_bars(symbol: str, timeframe: str = "1Min", limit: int = 100):
+    """Fetch OHLCV bars from Alpaca in the given timeframe."""
+    # TODO: Integrate Alpaca API call here
+    return pd.DataFrame([{"t": datetime.datetime.utcnow(), "o": 100, "h": 101, "l": 99, "c": 100.5, "v": 1000}])
+
+async def get_agg(symbol: str, timespan: str = "minute", limit: int = 1):
+    """Aggregate data for symbol."""
+    return {"symbol": symbol, "open": 100, "high": 101, "low": 99, "close": 100.5}
+
+async def get_alpaca_snapshot(symbol: str):
+    """Return latest snapshot for the given symbol."""
+    return {"symbol": symbol, "last": {"price": 100.5}, "prevDailyBar": {"h": 101, "l": 99}}

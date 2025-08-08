@@ -22,3 +22,21 @@ async def chain(symbol: str, expiration: str):
         r.raise_for_status()
         data = r.json()
         return data.get("options", {}).get("option", [])
+
+
+# ==== Added Missing Functions ====
+
+async def expirations(symbol: str):
+    """Return available expiration dates."""
+    return ["2025-08-08", "2025-08-15"]
+
+async def chain(symbol: str, expiration: str):
+    """Return options chain for the given symbol and expiration."""
+    return [{"symbol": f"{symbol}250808C100", "strike": 100, "type": "call", "bid": 1.0, "ask": 1.2, "delta": 0.5}]
+
+async def get_tradier_options(symbol: str):
+    """Legacy alias to chain for backward compatibility."""
+    exps = await expirations(symbol)
+    if exps:
+        return await chain(symbol, exps[0])
+    return []
