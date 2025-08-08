@@ -1,33 +1,61 @@
 # services/features_snapshot.py
 
-from services.data_alpaca import get_alpaca_snapshot
-from services.data_polygon import get_polygon_snapshot
+import asyncio
+import logging
+from services.data_alpaca import get_agg as get_alpaca_agg
+from services.data_polygon import get_agg as get_polygon_agg
 from services.data_tradier import get_tradier_options
 from services.features import build_indicators
 from services.levels import get_daily_levels, get_hourly_levels, get_weekly_levels
 from services.flow_engine import get_flow_snapshot
 from services.options_picker import pick_options
 from services.strategies import evaluate_trade
-import logging
 
 logger = logging.getLogger(__name__)
+
+def _latest_bar_to_dict(df):
+    """Convert the last row of a DataFrame into snapshot fields."""
+    if df is None or df.empty:
+        return {}
+    last = df.iloc[-1]
+    return {
+        "price": float(last.get("close", 0)),
+        "high": float(last.get("high", 0)),
+        "low": float(last.get("low", 0)),
+        "open": float(last.get("open", 0)),
+        "volume": float(last.get("volume", 0)),
+        "timestamp": str(last.name) if hasattr(last, "name") else None
+    }
+
+def _get_latest_bar(symbol: str, tf: str = "5m"):
+    """Try Alpaca first, fallback to Polygon."""
+    try:
+        df = asyncio.run(get_alpaca_agg(symbol, tf, limit=1))
+        snap = _latest_bar_to_dict(df)
+        if snap.get("price"):
+            return snap
+    except Exception as e:
+        logger.warning(f"Alpaca agg failed for {symbol}: {e}")
+
+    try:
+        df = asyncio.run(get_polygon_agg(symbol, tf, limit=1))
+        snap = _latest_bar_to_dict(df)
+        if snap.get("price"):
+            return snap
+    except Exception as e:
+        logger.error(f"Polygon agg failed for {symbol}: {e}")
+
+    return {}
 
 def build_features_snapshot(symbol: str) -> dict:
     snapshot = {"symbol": symbol}
 
-    # --- Core market data ---
-    try:
-        alpaca_data = get_alpaca_snapshot(symbol)
-        snapshot.update(alpaca_data)
-    except Exception as e:
-        logger.error(f"Alpaca snapshot failed for {symbol}: {e}")
-        try:
-            polygon_data = get_polygon_snapshot(symbol)
-            snapshot.update(polygon_data)
-        except Exception as e2:
-            logger.error(f"Polygon snapshot failed for {symbol}: {e2}")
-            snapshot["error"] = "API unavailable / data incomplete"
-            return snapshot
+    # --- Core latest bar ---
+    latest_bar = _get_latest_bar(symbol, "5m")
+    if not latest_bar:
+        snapshot["error"] = "API unavailable / data incomplete"
+        return snapshot
+    snapshot.update(latest_bar)
 
     # --- Indicators ---
     try:
