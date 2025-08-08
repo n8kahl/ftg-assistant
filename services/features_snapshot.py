@@ -1,10 +1,18 @@
+async def get_tradier_options(symbol: str):
+    dates = await expirations(symbol)
+    if not dates:
+        return []
+    # Just take nearest expiration
+    expiration = dates[0]
+    options = await chain(symbol, expiration)
+    return options
 # services/features_snapshot.py
 
 import asyncio
 import logging
 from services.data_alpaca import get_agg as get_alpaca_agg
 from services.data_polygon import get_agg as get_polygon_agg
-from services.data_tradier import get_tradier_options
+from services.data_tradier import expirations, chain
 from services.features import build_indicators
 from services.levels import get_daily_levels, get_hourly_levels, get_weekly_levels
 from services.flow_engine import get_flow_snapshot
