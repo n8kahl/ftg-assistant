@@ -39,3 +39,53 @@ def compute_all(df: pd.DataFrame, ema_lens=(9,21,50,200)) -> pd.DataFrame:
     out["macd_hist"] = hist
     out["atr14"] = atr(out, 14)
     return out
+
+
+import pandas as pd
+import numpy as np
+from services.data_alpaca import get_alpaca_bars
+
+async def build_indicators(symbol: str, timeframe: str = '5Min', limit: int = 1000):
+    # Fetch historical bars
+    bars = await get_alpaca_bars(symbol, timeframe, limit)
+    if not bars or 't' not in bars:
+        return None
+
+    df = pd.DataFrame(bars)
+    # Ensure numeric
+    for col in ['o', 'h', 'l', 'c', 'v']:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    df.dropna(inplace=True)
+
+    # EMA calculations
+    for length in [9, 21, 50, 200]:
+        df[f'ema_{length}'] = df['c'].ewm(span=length).mean()
+
+    # RSI14
+    delta = df['c'].diff()
+    up = delta.clip(lower=0)
+    down = -1 * delta.clip(upper=0)
+    ma_up = up.rolling(14).mean()
+    ma_down = down.rolling(14).mean()
+    rs = ma_up / ma_down
+    df['rsi14'] = 100 - (100 / (1 + rs))
+
+    # MACD histogram (12,26,9)
+    ema12 = df['c'].ewm(span=12).mean()
+    ema26 = df['c'].ewm(span=26).mean()
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9).mean()
+    df['macd_hist'] = macd - signal
+
+    # ATR14
+    high_low = df['h'] - df['l']
+    high_close = np.abs(df['h'] - df['c'].shift())
+    low_close = np.abs(df['l'] - df['c'].shift())
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = np.max(ranges, axis=1)
+    df['atr14'] = true_range.rolling(14).mean()
+
+    # VWAP
+    df['vwap'] = (df['v'] * (df['h'] + df['l'] + df['c']) / 3).cumsum() / df['v'].cumsum()
+
+    return df.to_dict(orient='records')
